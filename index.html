@@ -261,7 +261,7 @@
 </div>
 
 <script>
-    const tables = {};
+    const tables = JSON.parse(localStorage.getItem('tables')) || {};
     const currentDate = new Date();
     let currentMonth = currentDate.getMonth();
     let currentYear = currentDate.getFullYear();
@@ -347,10 +347,15 @@
             tables[tableName][`${currentMonth}-${currentYear}`] = [];
             updateTableSelect();
             document.getElementById('tableName').value = '';
+            saveTables();
             alert(`Tabla "${tableName}" creada.`);
         } else {
             alert('Por favor, ingrese un nombre válido para la tabla o ya existe.');
         }
+    }
+
+    function saveTables() {
+        localStorage.setItem('tables', JSON.stringify(tables));
     }
 
     function updateTableSelect() {
@@ -383,6 +388,7 @@
             }
             tables[selectedTable][monthKey].push({ name, amount, remaining, description });
             updateExpenseTable(selectedTable);
+            saveTables();
             clearInputs();
         } else {
             alert('Por favor, completa todos los campos correctamente.');
@@ -423,9 +429,19 @@
         container.classList.toggle('dark-mode');
     }
 
+    function loadTables() {
+        for (const name in tables) {
+            if (tables.hasOwnProperty(name)) {
+                updateTableSelect();
+                updateExpenseTable(name);
+            }
+        }
+    }
+
     // Inicializar los selectores al cargar la página
     window.onload = function() {
         initializeDateSelectors();
+        loadTables();
     }
 </script>
 
