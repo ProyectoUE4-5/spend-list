@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Gastos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f5;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            height: 100%;
+            max-width: 1200px;
+            margin: 0;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: flex-start;
+        }
+        h1, h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .dark-mode h1, .dark-mode h2 {
+            color: #f8f9fa;
+        }
+        label {
+            margin-right: 10px;
+        }
+        input[type="text"], input[type="number"], select {
+            width: calc(25% - 20px);
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .small-button {
+            padding: 8px 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .dark-mode {
+            background-color: #343a40;
+            color: #f8f9fa;
+        }
+        .dark-mode .container {
+            background-color: #495057;
+        }
+        .dark-mode table {
+            background-color: #6c757d;
+            color: #f8f9fa;
+        }
+        .dark-mode th {
+            background-color: #5a6268;
+        }
+        .dark-mode button {
+            background-color: #28a745;
+        }
+        .dark-mode button:hover {
+            background-color: #218838;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+        }
+        .calendar {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            justify-content: center;
+            width: 100%;
+        }
+        .day {
+            width: calc(14.28% - 10px);
+            margin: 2px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .past {
+            background-color: #e9ecef;
+            color: rgba(0, 0, 0, 0.5);
+        }
+        .today {
+            background-color: #007bff;
+            color: white;
+        }
+        .future {
+            background-color: #f0f0f5;
+        }
+        .controls {
+            width: 50%;
+            padding: 20px;
+        }
+        .expense-list {
+            width: 50%;
+            padding: 20px;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #007bff;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .close-button {
+            cursor: pointer;
+            float: right;
+            font-size: 20px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="expense-list">
+        <h1>Lista de Gastos</h1>
+        <table id="expenseTable">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Gasto</th>
+                    <th>Restante</th>
+                    <th>Descripción</th>
+                </tr>
+            </thead>
+            <tbody id="expenseList"></tbody>
+        </table>
+    </div>
+    <div class="controls">
+        <div class="button-container">
+            <label class="switch">
+                <input type="checkbox" id="themeSwitch" onchange="toggleTheme()">
+                <span class="slider"></span>
+            </label>
+            <button class="small-button" onclick="openCalendarModal()">Abrir Calendario</button>
+        </div>
+        
+        <h2>Seleccionar Tabla</h2>
+        <select id="tableSelect" onchange="selectTable()">
+            <option value="">Seleccione una tabla</option>
+        </select>
+
+        <h2>Crear Nueva Tabla de Gastos</h2>
+        <input type="text" id="tableName" placeholder="Nombre de la Tabla">
+        <button onclick="createTable()">Crear Tabla</button>
+
+        <h2>Agregar Nuevo Gasto</h2>
+        <input type="text" id="expenseName" placeholder="Nombre del Gasto" required>
+        <input type="number" id="expenseAmount" placeholder="Gasto" required>
+        <input type="number" id="remainingAmount" placeholder="Restante" required>
+        <input type="text" id="expenseDescription" placeholder="Descripción">
+        <button onclick="addExpense()">Agregar Gasto</button>
+    </div>
+</div>
+
+<div id="calendarModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeCalendarModal()">&times;</span>
+        <h2>Seleccionar Mes y Año</h2>
+        <select id="monthSelect"></select>
+        <select id="yearSelect"></select>
+        <button onclick="changeMonth(-1)">Mes Anterior</button>
+        <button onclick="changeMonth(1)">Mes Siguiente</button>
+
+        <h2>Días del Mes</h2>
+        <div id="calendar" class="calendar"></div>
+    </div>
+</div>
+
+<script>
+    const tables = {};
+    const currentDate = new Date();
+    let currentMonth = currentDate.getMonth();
+    let currentYear = currentDate.getFullYear();
+
+    function initializeDateSelectors() {
+        const monthSelect = document.getElementById('monthSelect');
+        const yearSelect = document.getElementById('yearSelect');
+
+        const monthNames = [
+            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        ];
+        monthNames.forEach((month, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = month;
+            monthSelect.appendChild(option);
+        });
+        monthSelect.value = currentMonth;
+
+        for (let year = currentYear - 5; year <= currentYear + 5; year++) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelect.appendChild(option);
+        }
+        yearSelect.value = currentYear;
+        updateCalendar();
+    }
+
+    function changeMonth(direction) {
+        currentMonth += direction;
+        if (currentMonth < 0) {
+            currentMonth = 11;
+            currentYear--;
+        } else if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+        }
+        document.getElementById('monthSelect').value = currentMonth;
+        document.getElementById('yearSelect').value = currentYear;
+        updateCalendar();
+    }
+
+    function updateCalendar() {
+        const calendar = document.getElementById('calendar');
+        calendar.innerHTML = '';
+        
+        const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const today = currentDate.getDate();
+
+        for (let day = 1; day <= totalDays; day++) {
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'day';
+
+            if (day < today) {
+                dayDiv.classList.add('past');
+                dayDiv.textContent = 'X';
+            } else if (day === today) {
+                dayDiv.classList.add('today');
+                dayDiv.textContent = '✓';
+            } else {
+                dayDiv.classList.add('future');
+                dayDiv.textContent = day;
+            }
+
+            calendar.appendChild(dayDiv);
+        }
+    }
+
+    function openCalendarModal() {
+        document.getElementById('calendarModal').style.display = "block";
+    }
+
+    function closeCalendarModal() {
+        document.getElementById('calendarModal').style.display = "none";
+    }
+
+    function createTable() {
+        const tableName = document.getElementById('tableName').value.trim();
+        if (tableName && !tables[tableName]) {
+            tables[tableName] = {};
+            tables[tableName][`${currentMonth}-${currentYear}`] = [];
+            updateTableSelect();
+            document.getElementById('tableName').value = '';
+            alert(`Tabla "${tableName}" creada.`);
+        } else {
+            alert('Por favor, ingrese un nombre válido para la tabla o ya existe.');
+        }
+    }
+
+    function updateTableSelect() {
+        const tableSelect = document.getElementById('tableSelect');
+        tableSelect.innerHTML = '<option value="">Seleccione una tabla</option>';
+        for (const name in tables) {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            tableSelect.appendChild(option);
+        }
+    }
+
+    function selectTable() {
+        const selectedTable = document.getElementById('tableSelect').value;
+        updateExpenseTable(selectedTable);
+    }
+
+    function addExpense() {
+        const selectedTable = document.getElementById('tableSelect').value;
+        const monthKey = `${currentMonth}-${currentYear}`;
+        const name = document.getElementById('expenseName').value.trim();
+        const amount = parseFloat(document.getElementById('expenseAmount').value);
+        const remaining = parseFloat(document.getElementById('remainingAmount').value);
+        const description = document.getElementById('expenseDescription').value.trim();
+
+        if (selectedTable && name && !isNaN(amount) && !isNaN(remaining)) {
+            if (!tables[selectedTable][monthKey]) {
+                tables[selectedTable][monthKey] = [];
+            }
+            tables[selectedTable][monthKey].push({ name, amount, remaining, description });
+            updateExpenseTable(selectedTable);
+            clearInputs();
+        } else {
+            alert('Por favor, completa todos los campos correctamente.');
+        }
+    }
+
+    function updateExpenseTable(tableName) {
+        const list = document.getElementById('expenseList');
+        list.innerHTML = '';
+        if (tableName) {
+            const monthKey = `${currentMonth}-${currentYear}`;
+            const expenses = tables[tableName][monthKey] || [];
+            expenses.forEach(expense => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${expense.name}</td>
+                    <td>$${expense.amount.toFixed(2)}</td>
+                    <td>$${expense.remaining.toFixed(2)}</td>
+                    <td>${expense.description}</td>
+                `;
+                list.appendChild(row);
+            });
+        }
+    }
+
+    function clearInputs() {
+        document.getElementById('expenseName').value = '';
+        document.getElementById('expenseAmount').value = '';
+        document.getElementById('remainingAmount').value = '';
+        document.getElementById('expenseDescription').value = '';
+    }
+
+    function toggleTheme() {
+        const body = document.body;
+        const container = document.querySelector('.container');
+
+        body.classList.toggle('dark-mode');
+        container.classList.toggle('dark-mode');
+    }
+
+    // Inicializar los selectores al cargar la página
+    window.onload = function() {
+        initializeDateSelectors();
+    }
+</script>
+
+</body>
+</html>
