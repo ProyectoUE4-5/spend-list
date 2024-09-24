@@ -150,6 +150,12 @@
             width: 50%;
             padding: 20px;
         }
+        .totals {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
         .switch {
             position: relative;
             display: inline-block;
@@ -219,6 +225,14 @@
             </thead>
             <tbody id="expenseList"></tbody>
         </table>
+        
+        <div class="totals">
+            <h2>Totales</h2>
+            <p>Total Fijos: <span id="totalFixed">0</span></p>
+            <p>Total Variables: <span id="totalVariable">0</span></p>
+            <p>Total Pasivos: <span id="totalPassive">0</span></p>
+            <p>Total General: <span id="totalGeneral">0</span></p>
+        </div>
     </div>
     <div class="controls">
         <div class="button-container">
@@ -262,22 +276,17 @@
 <div id="calendarModal" class="modal">
     <div class="modal-content">
         <span class="close-button" onclick="closeCalendarModal()">&times;</span>
-        <h2>Seleccionar Mes y Año</h2>
-        <select id="monthSelect"></select>
-        <select id="yearSelect"></select>
+        <h2>Calendario</h2>
+        <div class="calendar" id="calendar"></div>
         <button onclick="changeMonth(-1)">Mes Anterior</button>
         <button onclick="changeMonth(1)">Mes Siguiente</button>
-
-        <h2>Días del Mes</h2>
-        <div id="calendar" class="calendar"></div>
     </div>
 </div>
 
 <script>
-    const tables = JSON.parse(localStorage.getItem('tables')) || {};
-    const currentDate = new Date();
-    let currentMonth = currentDate.getMonth();
-    let currentYear = currentDate.getFullYear();
+    let tables = {};
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
 
     function initializeDateSelectors() {
         const monthSelect = document.getElementById('monthSelect');
@@ -324,6 +333,7 @@
     function updateExpenseTable(tableName) {
         const expenseList = document.getElementById('expenseList');
         expenseList.innerHTML = '';
+        resetTotals();
 
         if (tableName && tables[tableName]) {
             tables[tableName].forEach(expense => {
@@ -336,6 +346,7 @@
                     <td>${expense.paymentMethod}</td>
                 `;
                 expenseList.appendChild(row);
+                updateTotals(expense);
             });
         }
     }
@@ -387,6 +398,34 @@
 
     function saveTables() {
         localStorage.setItem('tables', JSON.stringify(tables));
+    }
+
+    function resetTotals() {
+        document.getElementById('totalFixed').textContent = '0';
+        document.getElementById('totalVariable').textContent = '0';
+        document.getElementById('totalPassive').textContent = '0';
+        document.getElementById('totalGeneral').textContent = '0';
+    }
+
+    function updateTotals(expense) {
+        const totalFixed = parseFloat(document.getElementById('totalFixed').textContent);
+        const totalVariable = parseFloat(document.getElementById('totalVariable').textContent);
+        const totalPassive = parseFloat(document.getElementById('totalPassive').textContent);
+        const totalGeneral = parseFloat(document.getElementById('totalGeneral').textContent);
+
+        switch (expense.category) {
+            case 'Fijo':
+                document.getElementById('totalFixed').textContent = (totalFixed + expense.amount).toFixed(2);
+                break;
+            case 'Variable':
+                document.getElementById('totalVariable').textContent = (totalVariable + expense.amount).toFixed(2);
+                break;
+            case 'Pasivo':
+                document.getElementById('totalPassive').textContent = (totalPassive + expense.amount).toFixed(2);
+                break;
+        }
+
+        document.getElementById('totalGeneral').textContent = (totalFixed + totalVariable + totalPassive + totalGeneral + expense.amount).toFixed(2);
     }
 
     function toggleTheme() {
