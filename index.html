@@ -38,7 +38,7 @@
         label {
             margin-right: 10px;
         }
-        input[type="text"], input[type="number"], select {
+        input[type="text"], input[type="number"], input[type="date"], select {
             width: calc(25% - 20px);
             padding: 10px;
             margin: 5px 0;
@@ -210,10 +210,11 @@
         <table id="expenseTable">
             <thead>
                 <tr>
-                    <th>Nombre</th>
-                    <th>Gasto</th>
-                    <th>Restante</th>
+                    <th>Fecha</th>
+                    <th>Categoría</th>
                     <th>Descripción</th>
+                    <th>Monto</th>
+                    <th>Método de Pago</th>
                 </tr>
             </thead>
             <tbody id="expenseList"></tbody>
@@ -239,10 +240,11 @@
         <button onclick="createTable()">Crear Tabla</button>
 
         <h2>Agregar Nuevo Gasto</h2>
-        <input type="text" id="expenseName" placeholder="Nombre del Gasto" required>
-        <input type="number" id="expenseAmount" placeholder="Gasto" required>
-        <input type="number" id="remainingAmount" placeholder="Restante" required>
+        <input type="date" id="expenseDate" placeholder="Fecha" required>
+        <input type="text" id="expenseCategory" placeholder="Categoría" required>
+        <input type="number" id="expenseAmount" placeholder="Monto" required>
         <input type="text" id="expenseDescription" placeholder="Descripción">
+        <input type="text" id="paymentMethod" placeholder="Método de Pago" required>
         <button onclick="addExpense()">Agregar Gasto</button>
     </div>
 </div>
@@ -316,10 +318,11 @@
             tables[tableName].forEach(expense => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${expense.name}</td>
-                    <td>${expense.amount}</td>
-                    <td>${expense.remaining}</td>
+                    <td>${expense.date}</td>
+                    <td>${expense.category}</td>
                     <td>${expense.description}</td>
+                    <td>${expense.amount}</td>
+                    <td>${expense.paymentMethod}</td>
                 `;
                 expenseList.appendChild(row);
             });
@@ -343,10 +346,11 @@
         const tableName = document.getElementById('tableSelect').value;
         if (tableName) {
             const expense = {
-                name: document.getElementById('expenseName').value,
+                date: document.getElementById('expenseDate').value,
+                category: document.getElementById('expenseCategory').value,
+                description: document.getElementById('expenseDescription').value,
                 amount: parseFloat(document.getElementById('expenseAmount').value),
-                remaining: parseFloat(document.getElementById('remainingAmount').value),
-                description: document.getElementById('expenseDescription').value
+                paymentMethod: document.getElementById('paymentMethod').value
             };
             tables[tableName].push(expense);
             saveTables();
