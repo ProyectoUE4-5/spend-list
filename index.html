@@ -232,6 +232,7 @@
         <select id="tableSelect" onchange="selectTable()">
             <option value="">Seleccione una tabla</option>
         </select>
+        <button class="small-button" onclick="deleteTable()">Eliminar Tabla</button>
 
         <h2>Crear Nueva Tabla de Gastos</h2>
         <input type="text" id="tableName" placeholder="Nombre de la Tabla">
@@ -282,14 +283,108 @@
         });
         monthSelect.value = currentMonth;
 
-        for (let year = currentYear - 5; year <= currentYear + 5; year++) {
+        for (let i = currentYear - 5; i <= currentYear + 5; i++) {
             const option = document.createElement('option');
-            option.value = year;
-            option.textContent = year;
+            option.value = i;
+            option.textContent = i;
             yearSelect.appendChild(option);
         }
         yearSelect.value = currentYear;
-        updateCalendar();
+    }
+
+    function loadTables() {
+        const tableSelect = document.getElementById('tableSelect');
+        tableSelect.innerHTML = '<option value="">Seleccione una tabla</option>';
+        for (const tableName in tables) {
+            const option = document.createElement('option');
+            option.value = tableName;
+            option.textContent = tableName;
+            tableSelect.appendChild(option);
+        }
+    }
+
+    function selectTable() {
+        const selectedTable = document.getElementById('tableSelect').value;
+        updateExpenseTable(selectedTable);
+    }
+
+    function updateExpenseTable(tableName) {
+        const expenseList = document.getElementById('expenseList');
+        expenseList.innerHTML = '';
+
+        if (tableName && tables[tableName]) {
+            tables[tableName].forEach(expense => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${expense.name}</td>
+                    <td>${expense.amount}</td>
+                    <td>${expense.remaining}</td>
+                    <td>${expense.description}</td>
+                `;
+                expenseList.appendChild(row);
+            });
+        }
+    }
+
+    function createTable() {
+        const tableName = document.getElementById('tableName').value;
+        if (tableName && !tables[tableName]) {
+            tables[tableName] = [];
+            saveTables();
+            loadTables();
+            document.getElementById('tableName').value = '';
+            alert(`Tabla "${tableName}" creada.`);
+        } else {
+            alert('Por favor, introduce un nombre válido para la tabla.');
+        }
+    }
+
+    function addExpense() {
+        const tableName = document.getElementById('tableSelect').value;
+        if (tableName) {
+            const expense = {
+                name: document.getElementById('expenseName').value,
+                amount: parseFloat(document.getElementById('expenseAmount').value),
+                remaining: parseFloat(document.getElementById('remainingAmount').value),
+                description: document.getElementById('expenseDescription').value
+            };
+            tables[tableName].push(expense);
+            saveTables();
+            updateExpenseTable(tableName);
+            alert('Gasto agregado.');
+        } else {
+            alert('Por favor, selecciona una tabla primero.');
+        }
+    }
+
+    function deleteTable() {
+        const selectedTable = document.getElementById('tableSelect').value;
+        if (selectedTable && confirm(`¿Estás seguro de que quieres eliminar la tabla "${selectedTable}"?`)) {
+            delete tables[selectedTable];
+            saveTables();
+            loadTables();
+            alert(`Tabla "${selectedTable}" eliminada.`);
+            updateExpenseTable(''); // Limpiar la tabla de gastos
+        } else {
+            alert('Por favor, selecciona una tabla para eliminar.');
+        }
+    }
+
+    function saveTables() {
+        localStorage.setItem('tables', JSON.stringify(tables));
+    }
+
+    function toggleTheme() {
+        document.body.classList.toggle('dark-mode');
+    }
+
+    function openCalendarModal() {
+        document.getElementById('calendarModal').style.display = 'block';
+        renderCalendar();
+    }
+
+    function closeCalendarModal() {
+        document.getElementById('calendarModal').style.display = 'none';
     }
 
     function changeMonth(direction) {
@@ -301,144 +396,40 @@
             currentMonth = 0;
             currentYear++;
         }
-        document.getElementById('monthSelect').value = currentMonth;
-        document.getElementById('yearSelect').value = currentYear;
-        updateCalendar();
+        renderCalendar();
     }
 
-    function updateCalendar() {
+    function renderCalendar() {
         const calendar = document.getElementById('calendar');
         calendar.innerHTML = '';
-        
-        const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
-        const today = currentDate.getDate();
 
-        for (let day = 1; day <= totalDays; day++) {
-            const dayDiv = document.createElement('div');
-            dayDiv.className = 'day';
+        const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const today = new Date();
 
-            if (day < today) {
-                dayDiv.classList.add('past');
-                dayDiv.textContent = 'X';
-            } else if (day === today) {
-                dayDiv.classList.add('today');
-                dayDiv.textContent = '✓';
+        for (let i = 0; i < firstDay; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.classList.add('day');
+            calendar.appendChild(emptyCell);
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayCell = document.createElement('div');
+            dayCell.classList.add('day');
+            dayCell.textContent = day;
+
+            if (currentYear === today.getFullYear() && currentMonth === today.getMonth() && day === today.getDate()) {
+                dayCell.classList.add('today');
+            } else if (currentYear < today.getFullYear() || (currentYear === today.getFullYear() && currentMonth < today.getMonth()) || (currentYear === today.getFullYear() && currentMonth === today.getMonth() && day < today.getDate())) {
+                dayCell.classList.add('past');
             } else {
-                dayDiv.classList.add('future');
-                dayDiv.textContent = day;
+                dayCell.classList.add('future');
             }
 
-            calendar.appendChild(dayDiv);
+            calendar.appendChild(dayCell);
         }
     }
 
-    function openCalendarModal() {
-        document.getElementById('calendarModal').style.display = "block";
-    }
-
-    function closeCalendarModal() {
-        document.getElementById('calendarModal').style.display = "none";
-    }
-
-    function createTable() {
-        const tableName = document.getElementById('tableName').value.trim();
-        if (tableName && !tables[tableName]) {
-            tables[tableName] = {};
-            tables[tableName][`${currentMonth}-${currentYear}`] = [];
-            updateTableSelect();
-            document.getElementById('tableName').value = '';
-            saveTables();
-            alert(`Tabla "${tableName}" creada.`);
-        } else {
-            alert('Por favor, ingrese un nombre válido para la tabla o ya existe.');
-        }
-    }
-
-    function saveTables() {
-        localStorage.setItem('tables', JSON.stringify(tables));
-    }
-
-    function updateTableSelect() {
-        const tableSelect = document.getElementById('tableSelect');
-        tableSelect.innerHTML = '<option value="">Seleccione una tabla</option>';
-        for (const name in tables) {
-            const option = document.createElement('option');
-            option.value = name;
-            option.textContent = name;
-            tableSelect.appendChild(option);
-        }
-    }
-
-    function selectTable() {
-        const selectedTable = document.getElementById('tableSelect').value;
-        updateExpenseTable(selectedTable);
-    }
-
-    function addExpense() {
-        const selectedTable = document.getElementById('tableSelect').value;
-        const monthKey = `${currentMonth}-${currentYear}`;
-        const name = document.getElementById('expenseName').value.trim();
-        const amount = parseFloat(document.getElementById('expenseAmount').value);
-        const remaining = parseFloat(document.getElementById('remainingAmount').value);
-        const description = document.getElementById('expenseDescription').value.trim();
-
-        if (selectedTable && name && !isNaN(amount) && !isNaN(remaining)) {
-            if (!tables[selectedTable][monthKey]) {
-                tables[selectedTable][monthKey] = [];
-            }
-            tables[selectedTable][monthKey].push({ name, amount, remaining, description });
-            updateExpenseTable(selectedTable);
-            saveTables();
-            clearInputs();
-        } else {
-            alert('Por favor, completa todos los campos correctamente.');
-        }
-    }
-
-    function updateExpenseTable(tableName) {
-        const list = document.getElementById('expenseList');
-        list.innerHTML = '';
-        if (tableName) {
-            const monthKey = `${currentMonth}-${currentYear}`;
-            const expenses = tables[tableName][monthKey] || [];
-            expenses.forEach(expense => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${expense.name}</td>
-                    <td>$${expense.amount.toFixed(2)}</td>
-                    <td>$${expense.remaining.toFixed(2)}</td>
-                    <td>${expense.description}</td>
-                `;
-                list.appendChild(row);
-            });
-        }
-    }
-
-    function clearInputs() {
-        document.getElementById('expenseName').value = '';
-        document.getElementById('expenseAmount').value = '';
-        document.getElementById('remainingAmount').value = '';
-        document.getElementById('expenseDescription').value = '';
-    }
-
-    function toggleTheme() {
-        const body = document.body;
-        const container = document.querySelector('.container');
-
-        body.classList.toggle('dark-mode');
-        container.classList.toggle('dark-mode');
-    }
-
-    function loadTables() {
-        for (const name in tables) {
-            if (tables.hasOwnProperty(name)) {
-                updateTableSelect();
-                updateExpenseTable(name);
-            }
-        }
-    }
-
-    // Inicializar los selectores al cargar la página
     window.onload = function() {
         initializeDateSelectors();
         loadTables();
