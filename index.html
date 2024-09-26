@@ -263,7 +263,7 @@
             <option value="Discrecional">Discrecional</option>
             <option value="Pasivo">Pasivo</option>
         </select>
-        <input type="text" id="expenseAmount" placeholder="Monto" oninput="formatAmount(this)" required>
+        <input type="text" id="expenseAmount" placeholder="Monto" oninput="formatAmount(this)">
         <input type="text" id="expenseDescription" placeholder="Descripción">
         <select id="paymentMethod" required>
             <option value="">Seleccione un método de pago</option>
@@ -279,73 +279,108 @@
         <span class="close-button" onclick="closeCalendarModal()">&times;</span>
         <h2>Calendario</h2>
         <div class="calendar" id="calendar"></div>
-        <button onclick="changeMonth(-1)">Mes Anterior</button>
-        <button onclick="changeMonth(1)">Mes Siguiente</button>
     </div>
 </div>
 
 <script>
     let tables = {};
-    let currentMonth = new Date().getMonth();
-    let currentYear = new Date().getFullYear();
+    let currentTable = '';
 
-    function loadTablesFromStorage() {
-        const storedTables = localStorage.getItem('tables');
-        if (storedTables) {
-            tables = JSON.parse(storedTables);
+    function formatCurrency(value) {
+        return '$ ' + value.toFixed(2);
+    }
+
+    function formatAmount(input) {
+        let value = parseFloat(input.value.replace(/,/g, ''));
+        if (!isNaN(value)) {
+            input.value = value.toLocaleString('es-AR');
+        } else {
+            input.value = '';
         }
-        loadTables();
+    }
+
+    function saveTables() {
+        localStorage.setItem('tables', JSON.stringify(tables));
+        updateTableSelect();
     }
 
     function loadTables() {
-        const tableSelect = document.getElementById('tableSelect');
-        tableSelect.innerHTML = '<option value="">Seleccione una tabla</option>';
+        const savedTables = localStorage.getItem('tables');
+        if (savedTables) {
+            tables = JSON.parse(savedTables);
+            updateTableSelect();
+        }
+    }
+
+    function updateTableSelect() {
+        const select = document.getElementById('tableSelect');
+        select.innerHTML = '<option value="">Seleccione una tabla</option>';
         for (const tableName in tables) {
             const option = document.createElement('option');
             option.value = tableName;
             option.textContent = tableName;
-            tableSelect.appendChild(option);
+            select.appendChild(option);
         }
     }
 
     function selectTable() {
-        const selectedTable = document.getElementById('tableSelect').value;
-        updateExpenseTable(selectedTable);
+        const select = document.getElementById('tableSelect');
+        currentTable = select.value;
+        updateExpenseTable(currentTable);
     }
 
     function updateExpenseTable(tableName) {
-        const expenseList = document.getElementById('expenseList');
-        expenseList.innerHTML = '';
-        resetTotals();
-
-        if (tableName && tables[tableName]) {
-            tables[tableName].forEach((expense, index) => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${expense.date}</td>
-                    <td>${expense.category}</td>
-                    <td>${expense.description}</td>
-                    <td>${formatCurrency(expense.amount)}</td>
-                    <td>${expense.paymentMethod}</td>
-                    <td><button onclick="removeExpense('${tableName}', ${index})">Eliminar</button></td>
-                `;
-                expenseList.appendChild(row);
-                updateTotals(expense);
-            });
-        }
+        const tbody = document.getElementById('expenseList');
+        tbody.innerHTML = '';
+        tables[tableName].forEach((expense, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${expense.date}</td>
+                <td>${expense.category}</td>
+                <td>${expense.description}</td>
+                <td>${formatCurrency(expense.amount)}</td>
+                <td>${expense.paymentMethod}</td>
+                <td><button onclick="removeExpense('${tableName}', ${index})">Eliminar</button></td>
+            `;
+            tbody.appendChild(row);
+        });
+        updateTotals(); // Actualizar totales cuando se cambia la tabla
     }
 
-    function createTable() {
-        const tableName = document.getElementById('tableName').value;
-        if (tableName && !tables[tableName]) {
-            tables[tableName] = [];
-            saveTables();
-            loadTables();
-            document.getElementById('tableName').value = '';
-            alert(`Tabla "${tableName}" creada.`);
-        } else {
-            alert('Por favor, introduce un nombre válido para la tabla.');
+    function resetTotals() {
+        document.getElementById('totalFixed').textContent = formatCurrency(0);
+        document.getElementById('totalVariable').textContent = formatCurrency(0);
+        document.getElementById('totalPassive').textContent = formatCurrency(0);
+        document.getElementById('totalGeneral').textContent = formatCurrency(0);
+    }
+
+    function updateTotals() {
+        let totalFixed = 0;
+        let totalVariable = 0;
+        let totalPassive = 0;
+
+        for (const tableName in tables) {
+            tables[tableName].forEach(expense => {
+                switch (expense.category) {
+                    case 'Fijo':
+                        totalFixed += expense.amount;
+                        break;
+                    case 'Variable':
+                        totalVariable += expense.amount;
+                        break;
+                    case 'Pasivo':
+                        totalPassive += expense.amount;
+                        break;
+                }
+            });
         }
+
+        document.getElementById('totalFixed').textContent = formatCurrency(totalFixed);
+        document.getElementById('totalVariable').textContent = formatCurrency(totalVariable);
+        document.getElementById('totalPassive').textContent = formatCurrency(totalPassive);
+
+        const totalGeneral = totalFixed + totalVariable + totalPassive;
+        document.getElementById('totalGeneral').textContent = formatCurrency(totalGeneral);
     }
 
     function addExpense() {
@@ -355,12 +390,13 @@
                 date: document.getElementById('expenseDate').value,
                 category: document.getElementById('expenseCategory').value,
                 description: document.getElementById('expenseDescription').value,
-                amount: parseFloat(document.getElementById('expenseAmount').value.replace(/\./g, '').replace(',', '.')),
+                amount: parseFloat(document.getElementById('expenseAmount').value.replace(/,/g, '')),
                 paymentMethod: document.getElementById('paymentMethod').value
             };
             tables[tableName].push(expense);
             saveTables();
             updateExpenseTable(tableName);
+            updateTotals(); // Actualizar los totales después de agregar un gasto
             alert('Gasto agregado.');
         } else {
             alert('Por favor, selecciona una tabla primero.');
@@ -372,140 +408,76 @@
             tables[tableName].splice(index, 1);
             saveTables();
             updateExpenseTable(tableName);
+            updateTotals(); // Actualizar los totales después de eliminar un gasto
             alert('Gasto eliminado.');
         }
     }
 
-    function deleteTable() {
-        const selectedTable = document.getElementById('tableSelect').value;
-        if (selectedTable && confirm(`¿Estás seguro de que quieres eliminar la tabla "${selectedTable}"?`)) {
-            delete tables[selectedTable];
+    function createTable() {
+        const tableName = document.getElementById('tableName').value;
+        if (tableName) {
+            tables[tableName] = [];
             saveTables();
-            loadTables();
-            alert(`Tabla "${selectedTable}" eliminada.`);
-            updateExpenseTable(''); // Limpiar la tabla de gastos
+            document.getElementById('tableName').value = '';
+            alert('Tabla creada.');
         } else {
-            alert('Por favor, selecciona una tabla para eliminar.');
+            alert('Por favor, introduce un nombre para la tabla.');
         }
     }
 
-    function saveTables() {
-        localStorage.setItem('tables', JSON.stringify(tables));
-    }
-
-    function resetTotals() {
-        document.getElementById('totalFixed').textContent = formatCurrency(0);
-        document.getElementById('totalVariable').textContent = formatCurrency(0);
-        document.getElementById('totalPassive').textContent = formatCurrency(0);
-        document.getElementById('totalGeneral').textContent = formatCurrency(0);
-    }
-
-function updateTotals(expense) {
-        const totalFixed = parseFloat(document.getElementById('totalFixed').textContent.replace(/\./g, '').replace('$ ', '').replace(',', '.')) || 0;
-        const totalVariable = parseFloat(document.getElementById('totalVariable').textContent.replace(/\./g, '').replace('$ ', '').replace(',', '.')) || 0;
-        const totalPassive = parseFloat(document.getElementById('totalPassive').textContent.replace(/\./g, '').replace('$ ', '').replace(',', '.')) || 0;
-
-        let newTotalFixed = totalFixed;
-        let newTotalVariable = totalVariable;
-        let newTotalPassive = totalPassive;
-
-        switch (expense.category) {
-            case 'Fijo':
-                newTotalFixed += expense.amount; // Acumula el monto
-                break;
-            case 'Variable':
-                newTotalVariable += expense.amount; // Acumula el monto
-                break;
-            case 'Pasivo':
-                newTotalPassive += expense.amount; // Acumula el monto
-                break;
-        }
-
-        document.getElementById('totalFixed').textContent = formatCurrency(newTotalFixed);
-        document.getElementById('totalVariable').textContent = formatCurrency(newTotalVariable);
-        document.getElementById('totalPassive').textContent = formatCurrency(newTotalPassive);
-
-        const totalGeneral = newTotalFixed + newTotalVariable + newTotalPassive;
-        document.getElementById('totalGeneral').textContent = formatCurrency(totalGeneral);
-    }
-    
-    function formatCurrency(amount) {
-        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(amount);
-    }
-
-    function formatAmount(input) {
-        let value = input.value.replace(/\./g, '').replace(',', '.');
-        if (!isNaN(value) && value.length > 0) {
-            value = parseFloat(value);
-            if (value >= 1000) {
-                input.value = value.toLocaleString('es-AR');
+    function deleteTable() {
+        const tableName = document.getElementById('tableSelect').value;
+        if (tableName) {
+            if (confirm('¿Estás seguro de que quieres eliminar esta tabla?')) {
+                delete tables[tableName];
+                saveTables();
+                resetTotals();
+                updateExpenseTable('');
+                alert('Tabla eliminada.');
             }
         } else {
-            input.value = '';
+            alert('Por favor, selecciona una tabla primero.');
         }
-    }
-
-    function toggleTheme() {
-        document.body.classList.toggle('dark-mode');
     }
 
     function openCalendarModal() {
         document.getElementById('calendarModal').style.display = 'block';
-        renderCalendar();
+        generateCalendar();
     }
 
     function closeCalendarModal() {
         document.getElementById('calendarModal').style.display = 'none';
     }
 
-    function changeMonth(direction) {
-        currentMonth += direction;
-        if (currentMonth < 0) {
-            currentMonth = 11;
-            currentYear--;
-        } else if (currentMonth > 11) {
-            currentMonth = 0;
-            currentYear++;
-        }
-        renderCalendar();
+    function toggleTheme() {
+        document.body.classList.toggle('dark-mode');
     }
 
-    function renderCalendar() {
+    function generateCalendar() {
         const calendar = document.getElementById('calendar');
-        calendar.innerHTML = '';
-
-        const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
         const today = new Date();
+        const month = today.getMonth();
+        const year = today.getFullYear();
 
-        for (let i = 0; i < firstDay; i++) {
-            const emptyCell = document.createElement('div');
-            emptyCell.classList.add('day');
-            calendar.appendChild(emptyCell);
-        }
-
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dayCell = document.createElement('div');
-            dayCell.classList.add('day');
-            dayCell.textContent = day;
-
-            if (currentYear === today.getFullYear() && currentMonth === today.getMonth() && day === today.getDate()) {
-                dayCell.classList.add('today');
-            } else if (currentYear < today.getFullYear() || (currentYear === today.getFullYear() && currentMonth < today.getMonth()) || (currentYear === today.getFullYear() && currentMonth === today.getMonth() && day < today.getDate())) {
-                dayCell.classList.add('past');
-            } else {
-                dayCell.classList.add('future');
+        calendar.innerHTML = '';
+        for (let day = 1; day <= 31; day++) {
+            const date = new Date(year, month, day);
+            if (date.getMonth() === month) {
+                const dayElement = document.createElement('div');
+                dayElement.classList.add('day');
+                if (date.toDateString() === today.toDateString()) {
+                    dayElement.classList.add('today');
+                } else {
+                    dayElement.classList.add('future');
+                }
+                dayElement.textContent = day;
+                calendar.appendChild(dayElement);
             }
-
-            calendar.appendChild(dayCell);
         }
     }
 
-    window.onload = function() {
-        loadTablesFromStorage(); // Cargar tablas desde localStorage al iniciar
-    }
+    loadTables();
 </script>
-
 </body>
 </html>
 <!-- <!DOCTYPE html>
