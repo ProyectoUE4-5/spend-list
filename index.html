@@ -206,7 +206,7 @@
             font-size: 20px;
             color: #333;
         }
-   </style>
+ </style>
 </head>
 <body>
 
@@ -324,7 +324,7 @@
                     <td>${expense.date}</td>
                     <td>${expense.category}</td>
                     <td>${expense.description}</td>
-                    <td>${expense.amount.toFixed(2)}</td>
+                    <td>${formatCurrency(expense.amount)}</td>
                     <td>${expense.paymentMethod}</td>
                 `;
                 expenseList.appendChild(row);
@@ -383,31 +383,35 @@
     }
 
     function resetTotals() {
-        document.getElementById('totalFixed').textContent = '0';
-        document.getElementById('totalVariable').textContent = '0';
-        document.getElementById('totalPassive').textContent = '0';
-        document.getElementById('totalGeneral').textContent = '0';
+        document.getElementById('totalFixed').textContent = formatCurrency(0);
+        document.getElementById('totalVariable').textContent = formatCurrency(0);
+        document.getElementById('totalPassive').textContent = formatCurrency(0);
+        document.getElementById('totalGeneral').textContent = formatCurrency(0);
     }
 
     function updateTotals(expense) {
-        const totalFixed = parseFloat(document.getElementById('totalFixed').textContent);
-        const totalVariable = parseFloat(document.getElementById('totalVariable').textContent);
-        const totalPassive = parseFloat(document.getElementById('totalPassive').textContent);
-        const totalGeneral = parseFloat(document.getElementById('totalGeneral').textContent);
+        const totalFixed = parseFloat(document.getElementById('totalFixed').textContent.replace(/\./g, '').replace(' pesos (ARS)', ''));
+        const totalVariable = parseFloat(document.getElementById('totalVariable').textContent.replace(/\./g, '').replace(' pesos (ARS)', ''));
+        const totalPassive = parseFloat(document.getElementById('totalPassive').textContent.replace(/\./g, '').replace(' pesos (ARS)', ''));
+        const totalGeneral = parseFloat(document.getElementById('totalGeneral').textContent.replace(/\./g, '').replace(' pesos (ARS)', ''));
 
         switch (expense.category) {
             case 'Fijo':
-                document.getElementById('totalFixed').textContent = (totalFixed + expense.amount).toFixed(2);
+                document.getElementById('totalFixed').textContent = formatCurrency(totalFixed + expense.amount);
                 break;
             case 'Variable':
-                document.getElementById('totalVariable').textContent = (totalVariable + expense.amount).toFixed(2);
+                document.getElementById('totalVariable').textContent = formatCurrency(totalVariable + expense.amount);
                 break;
             case 'Pasivo':
-                document.getElementById('totalPassive').textContent = (totalPassive + expense.amount).toFixed(2);
+                document.getElementById('totalPassive').textContent = formatCurrency(totalPassive + expense.amount);
                 break;
         }
 
-        document.getElementById('totalGeneral').textContent = (totalFixed + totalVariable + totalPassive + totalGeneral + expense.amount).toFixed(2);
+        document.getElementById('totalGeneral').textContent = formatCurrency(totalFixed + totalVariable + totalPassive + totalGeneral + expense.amount);
+    }
+
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(amount);
     }
 
     function toggleTheme() {
