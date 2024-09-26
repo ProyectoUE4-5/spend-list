@@ -773,6 +773,516 @@
             <option value="Discrecional">Discrecional</option>
             <option value="Pasivo">Pasivo</option>
         </select>
+        <input type="text" id="expenseAmount" placeholder="Monto" oninput="formatAmount(this)" required>
+        <input type="text" id="expenseDescription" placeholder="Descripción">
+        <select id="paymentMethod" required>
+            <option value="">Seleccione un método de pago</option>
+            <option value="Mercado Pago">Mercado Pago</option>
+            <option value="Efectivo">Efectivo</option>
+        </select>
+        <button onclick="addExpense()">Agregar Gasto</button>
+    </div>
+</div>
+
+<div id="calendarModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeCalendarModal()">&times;</span>
+        <h2>Calendario</h2>
+        <div class="calendar" id="calendar"></div>
+        <button onclick="changeMonth(-1)">Mes Anterior</button>
+        <button onclick="changeMonth(1)">Mes Siguiente</button>
+    </div>
+</div>
+
+<script>
+    let tables = {};
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
+
+    function loadTablesFromStorage() {
+        const storedTables = localStorage.getItem('tables');
+        if (storedTables) {
+            tables = JSON.parse(storedTables);
+        }
+        loadTables();
+    }
+
+    function loadTables() {
+        const tableSelect = document.getElementById('tableSelect');
+        tableSelect.innerHTML = '<option value="">Seleccione una tabla</option>';
+        for (const tableName in tables) {
+            const option = document.createElement('option');
+            option.value = tableName;
+            option.textContent = tableName;
+            tableSelect.appendChild(option);
+        }
+    }
+
+    function selectTable() {
+        const selectedTable = document.getElementById('tableSelect').value;
+        updateExpenseTable(selectedTable);
+    }
+
+    function updateExpenseTable(tableName) {
+        const expenseList = document.getElementById('expenseList');
+        expenseList.innerHTML = '';
+        resetTotals();
+
+        if (tableName && tables[tableName]) {
+            tables[tableName].forEach((expense, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${expense.date}</td>
+                    <td>${expense.category}</td>
+                    <td>${expense.description}</td>
+                    <td>${formatCurrency(expense.amount)}</td>
+                    <td>${expense.paymentMethod}</td>
+                    <td><button onclick="removeExpense('${tableName}', ${index})">Eliminar</button></td>
+                `;
+                expenseList.appendChild(row);
+                updateTotals(expense);
+            });
+        }
+    }
+
+    function createTable() {
+        const tableName = document.getElementById('tableName').value;
+        if (tableName && !tables[tableName]) {
+            tables[tableName] = [];
+            saveTables();
+            loadTables();
+            document.getElementById('tableName').value = '';
+            alert(`Tabla "${tableName}" creada.`);
+        } else {
+            alert('Por favor, introduce un nombre válido para la tabla.');
+        }
+    }
+
+    function addExpense() {
+        const tableName = document.getElementById('tableSelect').value;
+        if (tableName) {
+            const expense = {
+                date: document.getElementById('expenseDate').value,
+                category: document.getElementById('expenseCategory').value,
+                description: document.getElementById('expenseDescription').value,
+                amount: parseFloat(document.getElementById('expenseAmount').value.replace(/\./g, '').replace(',', '.')),
+                paymentMethod: document.getElementById('paymentMethod').value
+            };
+            tables[tableName].push(expense);
+            saveTables();
+            updateExpenseTable(tableName);
+            alert('Gasto agregado.');
+        } else {
+            alert('Por favor, selecciona una tabla primero.');
+        }
+    }
+
+    function removeExpense(tableName, index) {
+        if (confirm('¿Estás seguro de que quieres eliminar este gasto?')) {
+            tables[tableName].splice(index, 1);
+            saveTables();
+            updateExpenseTable(tableName);
+            alert('Gasto eliminado.');
+        }
+    }
+
+    function deleteTable() {
+        const selectedTable = document.getElementById('tableSelect').value;
+        if (selectedTable && confirm(`¿Estás seguro de que quieres eliminar la tabla "${selectedTable}"?`)) {
+            delete tables[selectedTable];
+            saveTables();
+            loadTables();
+            alert(`Tabla "${selectedTable}" eliminada.`);
+            updateExpenseTable(''); // Limpiar la tabla de gastos
+        } else {
+            alert('Por favor, selecciona una tabla para eliminar.');
+        }
+    }
+
+    function saveTables() {
+        localStorage.setItem('tables', JSON.stringify(tables));
+    }
+
+    function resetTotals() {
+        document.getElementById('totalFixed').textContent = formatCurrency(0);
+        document.getElementById('totalVariable').textContent = formatCurrency(0);
+        document.getElementById('totalPassive').textContent = formatCurrency(0);
+        document.getElementById('totalGeneral').textContent = formatCurrency(0);
+    }
+
+    function updateTotals(expense) {
+        const totalFixed = parseFloat(document.getElementById('totalFixed').textContent.replace(/\./g, '').replace('$ ', '').replace(',', '.')) || 0;
+        const totalVariable = parseFloat(document.getElementById('totalVariable').textContent.replace(/\./g, '').replace('$ ', '').replace(',', '.')) || 0;
+        const totalPassive = parseFloat(document.getElementById('totalPassive').textContent.replace(/\./g, '').replace('$ ', '').replace(',', '.')) || 0;
+        
+        let newTotalFixed = totalFixed;
+        let newTotalVariable = totalVariable;
+        let newTotalPassive = totalPassive;
+
+        switch (expense.category) {
+            case 'Fijo':
+                newTotalFixed += expense.amount;
+                break;
+            case 'Variable':
+                newTotalVariable += expense.amount;
+                break;
+            case 'Pasivo':
+                newTotalPassive += expense.amount;
+                break;
+        }
+
+        document.getElementById('totalFixed').textContent = formatCurrency(newTotalFixed);
+        document.getElementById('totalVariable').textContent = formatCurrency(newTotalVariable);
+        document.getElementById('totalPassive').textContent = formatCurrency(newTotalPassive);
+
+        const totalGeneral = newTotalFixed + newTotalVariable + newTotalPassive;
+        document.getElementById('totalGeneral').textContent = formatCurrency(totalGeneral);
+    }
+
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(amount);
+    }
+
+    function formatAmount(input) {
+        let value = input.value.replace(/\./g, '').replace(',', '.');
+        if (!isNaN(value) && value.length > 0) {
+            value = parseFloat(value);
+            if (value >= 1000) {
+                input.value = value.toLocaleString('es-AR');
+            }
+        } else {
+            input.value = '';
+        }
+    }
+
+    function toggleTheme() {
+        document.body.classList.toggle('dark-mode');
+    }
+
+    function openCalendarModal() {
+        document.getElementById('calendarModal').style.display = 'block';
+        renderCalendar();
+    }
+
+    function closeCalendarModal() {
+        document.getElementById('calendarModal').style.display = 'none';
+    }
+
+    function changeMonth(direction) {
+        currentMonth += direction;
+        if (currentMonth < 0) {
+            currentMonth = 11;
+            currentYear--;
+        } else if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+        }
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        const calendar = document.getElementById('calendar');
+        calendar.innerHTML = '';
+
+        const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const today = new Date();
+
+        for (let i = 0; i < firstDay; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.classList.add('day');
+            calendar.appendChild(emptyCell);
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayCell = document.createElement('div');
+            dayCell.classList.add('day');
+            dayCell.textContent = day;
+
+            if (currentYear === today.getFullYear() && currentMonth === today.getMonth() && day === today.getDate()) {
+                dayCell.classList.add('today');
+            } else if (currentYear < today.getFullYear() || (currentYear === today.getFullYear() && currentMonth < today.getMonth()) || (currentYear === today.getFullYear() && currentMonth === today.getMonth() && day < today.getDate())) {
+                dayCell.classList.add('past');
+            } else {
+                dayCell.classList.add('future');
+            }
+
+            calendar.appendChild(dayCell);
+        }
+    }
+
+    window.onload = function() {
+        loadTablesFromStorage(); // Cargar tablas desde localStorage al iniciar
+    }
+</script>
+
+</body>
+</html>
+<!-- <!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Gastos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f5;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            height: 100%;
+            max-width: 1200px;
+            margin: 0;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: flex-start;
+        }
+        h1, h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .dark-mode h1, .dark-mode h2 {
+            color: #f8f9fa;
+        }
+        label {
+            margin-right: 10px;
+        }
+        input[type="text"], input[type="number"], input[type="date"], select {
+            width: calc(25% - 20px);
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .small-button {
+            padding: 8px 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .dark-mode {
+            background-color: #343a40;
+            color: #f8f9fa;
+        }
+        .dark-mode .container {
+            background-color: #495057;
+        }
+        .dark-mode table {
+            background-color: #6c757d;
+            color: #f8f9fa;
+        }
+        .dark-mode th {
+            background-color: #5a6268;
+        }
+        .dark-mode button {
+            background-color: #28a745;
+        }
+        .dark-mode button:hover {
+            background-color: #218838;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+        }
+        .calendar {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            justify-content: center;
+            width: 100%;
+        }
+        .day {
+            width: calc(14.28% - 10px);
+            margin: 2px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .past {
+            background-color: #e9ecef;
+            color: rgba(0, 0, 0, 0.5);
+        }
+        .today {
+            background-color: #007bff;
+            color: white;
+        }
+        .future {
+            background-color: #f0f0f5;
+        }
+        .controls {
+            width: 50%;
+            padding: 20px;
+        }
+        .expense-list {
+            width: 50%;
+            padding: 20px;
+        }
+        .totals {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #007bff;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .close-button {
+            cursor: pointer;
+            float: right;
+            font-size: 20px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="expense-list">
+        <h1>Lista de Gastos</h1>
+        <table id="expenseTable">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Categoría</th>
+                    <th>Descripción</th>
+                    <th>Monto</th>
+                    <th>Método de Pago</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="expenseList"></tbody>
+        </table>
+        
+        <div class="totals">
+            <h2>Totales</h2>
+            <p>Total Fijos: <span id="totalFixed">0</span></p>
+            <p>Total Variables: <span id="totalVariable">0</span></p>
+            <p>Total Pasivos: <span id="totalPassive">0</span></p>
+            <p>Total General: <span id="totalGeneral">0</span></p>
+        </div>
+    </div>
+    <div class="controls">
+        <div class="button-container">
+            <label class="switch">
+                <input type="checkbox" id="themeSwitch" onchange="toggleTheme()">
+                <span class="slider"></span>
+            </label>
+            <button class="small-button" onclick="openCalendarModal()">Abrir Calendario</button>
+        </div>
+        
+        <h2>Seleccionar Tabla</h2>
+        <select id="tableSelect" onchange="selectTable()">
+            <option value="">Seleccione una tabla</option>
+        </select>
+        <button class="small-button" onclick="deleteTable()">Eliminar Tabla</button>
+
+        <h2>Crear Nueva Tabla de Gastos</h2>
+        <input type="text" id="tableName" placeholder="Nombre de la Tabla">
+        <button onclick="createTable()">Crear Tabla</button>
+
+        <h2>Agregar Nuevo Gasto</h2>
+        <input type="date" id="expenseDate" required>
+        <select id="expenseCategory" required>
+            <option value="">Seleccione una categoría</option>
+            <option value="Fijo">Fijo</option>
+            <option value="Variable">Variable</option>
+            <option value="Discrecional">Discrecional</option>
+            <option value="Pasivo">Pasivo</option>
+        </select>
         <select id="expenseAmount" required>
             <option value="">Seleccione un monto</option>
             <option value="1000">1.000</option>
@@ -1015,4 +1525,5 @@
 </body>
 </html>
 
+ -->
  -->
