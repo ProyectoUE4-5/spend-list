@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Gastos</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="images.png" type="image/png">
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -17,8 +17,8 @@
             justify-content: center;
         }
         .container {
-            width: 100%; /* Cambiado a 100% */
-            height: auto; /* Cambiado a auto */
+            width: 100%;
+            height: auto;
             margin: 0;
             background: white;
             padding: 20px;
@@ -146,11 +146,12 @@
             padding: 20px;
         }
         .expense-list {
-    width: 50%;
-    padding: 20px;
-    max-height: 400px; /* Ajusta la altura máxima según tus necesidades */
-    overflow-y: auto; /* Permitir el desplazamiento vertical */
-}        .totals {
+            width: 50%;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .totals {
             margin-top: 20px;
             padding: 10px;
             border: 1px solid #ddd;
@@ -206,13 +207,21 @@
             font-size: 20px;
             color: #333;
         }
+        .icon {
+            width: 50px;
+            height: 50px;
+            background-image: url('images.png'); /* Cambia esta URL por la de tu icono */
+            background-size: cover;
+            display: inline-block;
+            margin-right: 10px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="expense-list">
-        <h1>Lista de Gastos</h1>
+        <h1><span class="icon"></span>Lista de Gastos</h1>
         <table id="expenseTable">
             <thead>
                 <tr>
@@ -294,7 +303,6 @@
     function formatAmount(input) {
         let value = input.value.replace(/\./g, '').replace(/,/g, '');
         if (!isNaN(value) && value.length <= 6) {
-            // Formatear monto con puntos
             value = parseInt(value);
             input.value = value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         } else {
@@ -330,6 +338,7 @@
         const select = document.getElementById('tableSelect');
         currentTable = select.value;
         updateExpenseTable(currentTable);
+        updateTotals(); // Actualizar totales cuando se cambia la tabla
     }
 
     function updateExpenseTable(tableName) {
@@ -347,7 +356,7 @@
             `;
             tbody.appendChild(row);
         });
-        updateTotals(); // Actualizar totales cuando se cambia la tabla
+        updateTotals(); // Actualizar totales después de actualizar la tabla de gastos
     }
 
     function resetTotals() {
@@ -357,17 +366,14 @@
         document.getElementById('totalGeneral').textContent = formatCurrency(0);
     }
 
-    function formatCurrency(value) {
-    return value % 1 === 0 ? `$ ${value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}` : `$ ${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-}
+    function updateTotals() {
+        if (!currentTable) return; // Si no hay tabla seleccionada, salir
 
-function updateTotals() {
-    let totalFixed = 0;
-    let totalVariable = 0;
-    let totalPassive = 0;
+        let totalFixed = 0;
+        let totalVariable = 0;
+        let totalPassive = 0;
 
-    for (const tableName in tables) {
-        tables[tableName].forEach(expense => {
+        tables[currentTable].forEach(expense => {
             switch (expense.category) {
                 case 'Fijo':
                     totalFixed += expense.amount;
@@ -380,15 +386,15 @@ function updateTotals() {
                     break;
             }
         });
+
+        document.getElementById('totalFixed').textContent = formatCurrency(totalFixed);
+        document.getElementById('totalVariable').textContent = formatCurrency(totalVariable);
+        document.getElementById('totalPassive').textContent = formatCurrency(totalPassive);
+
+        const totalGeneral = totalFixed + totalVariable + totalPassive;
+        document.getElementById('totalGeneral').textContent = formatCurrency(totalGeneral);
     }
 
-    document.getElementById('totalFixed').textContent = formatCurrency(totalFixed);
-    document.getElementById('totalVariable').textContent = formatCurrency(totalVariable);
-    document.getElementById('totalPassive').textContent = formatCurrency(totalPassive);
-
-    const totalGeneral = totalFixed + totalVariable + totalPassive;
-    document.getElementById('totalGeneral').textContent = formatCurrency(totalGeneral);
-}
     function addExpense() {
         const tableName = document.getElementById('tableSelect').value;
         if (tableName) {
@@ -415,7 +421,6 @@ function updateTotals() {
             saveTables();
             updateExpenseTable(tableName);
             updateTotals(); // Actualizar los totales después de eliminar un gasto
-            alert('Gasto eliminado.');
         }
     }
 
@@ -426,28 +431,27 @@ function updateTotals() {
                 tables[tableName] = [];
                 saveTables();
                 document.getElementById('tableName').value = '';
-                alert('Tabla creada.');
+                alert('Tabla creada exitosamente.');
             } else {
-                alert('La tabla ya existe. Elige otro nombre.');
+                alert('Ya existe una tabla con ese nombre.');
             }
         } else {
-            alert('Por favor, introduce un nombre para la tabla.');
+            alert('Por favor, ingresa un nombre para la tabla.');
         }
     }
 
     function deleteTable() {
         const tableName = document.getElementById('tableSelect').value;
-        if (tableName) {
-            if (confirm('¿Estás seguro de que quieres eliminar esta tabla?')) {
-                delete tables[tableName];
-                saveTables();
-                resetTotals();
-                updateExpenseTable('');
-                alert('Tabla eliminada.');
-            }
-        } else {
-            alert('Por favor, selecciona una tabla primero.');
+        if (tableName && confirm('¿Estás seguro de que quieres eliminar esta tabla?')) {
+            delete tables[tableName];
+            saveTables();
+            resetTotals();
+            updateExpenseTable('');
         }
+    }
+
+    function toggleTheme() {
+        document.body.classList.toggle('dark-mode');
     }
 
     function openCalendarModal() {
@@ -459,34 +463,34 @@ function updateTotals() {
         document.getElementById('calendarModal').style.display = 'none';
     }
 
-    function toggleTheme() {
-        document.body.classList.toggle('dark-mode');
-    }
-
     function generateCalendar() {
         const calendar = document.getElementById('calendar');
-        const today = new Date();
-        const month = today.getMonth();
-        const year = today.getFullYear();
-
         calendar.innerHTML = '';
-        for (let day = 1; day <= 31; day++) {
-            const date = new Date(year, month, day);
-            if (date.getMonth() === month) {
-                const dayElement = document.createElement('div');
-                dayElement.classList.add('day');
-                if (date.toDateString() === today.toDateString()) {
-                    dayElement.classList.add('today');
-                } else {
-                    dayElement.classList.add('future');
-                }
-                dayElement.textContent = day;
-                calendar.appendChild(dayElement);
+        const date = new Date();
+        const month = date.getMonth();
+        const year = date.getFullYear();
+
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const totalDays = lastDay.getDate();
+
+        for (let i = 1; i <= totalDays; i++) {
+            const day = document.createElement('div');
+            day.className = 'day future';
+            day.textContent = i;
+
+            if (i === date.getDate() && month === date.getMonth()) {
+                day.classList.add('today');
+            } else {
+                day.classList.add('past');
             }
+
+            calendar.appendChild(day);
         }
     }
 
     loadTables();
 </script>
-</body> 
+
+</body>
 </html>
