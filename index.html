@@ -206,7 +206,7 @@
             font-size: 20px;
             color: #333;
         }
-    </style>
+   </style>
 </head>
 <body>
 
@@ -254,7 +254,7 @@
         <button onclick="createTable()">Crear Tabla</button>
 
         <h2>Agregar Nuevo Gasto</h2>
-        <input type="date" id="expenseDate" placeholder="Fecha" required>
+        <input type="date" id="expenseDate" required>
         <select id="expenseCategory" required>
             <option value="">Seleccione una categoría</option>
             <option value="Fijo">Fijo</option>
@@ -288,30 +288,12 @@
     let currentMonth = new Date().getMonth();
     let currentYear = new Date().getFullYear();
 
-    function initializeDateSelectors() {
-        const monthSelect = document.getElementById('monthSelect');
-        const yearSelect = document.getElementById('yearSelect');
-
-        const monthNames = [
-            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-        ];
-
-        monthNames.forEach((month, index) => {
-            const option = document.createElement('option');
-            option.value = index;
-            option.textContent = month;
-            monthSelect.appendChild(option);
-        });
-        monthSelect.value = currentMonth;
-
-        for (let i = currentYear - 5; i <= currentYear + 5; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = i;
-            yearSelect.appendChild(option);
+    function loadTablesFromStorage() {
+        const storedTables = localStorage.getItem('tables');
+        if (storedTables) {
+            tables = JSON.parse(storedTables);
         }
-        yearSelect.value = currentYear;
+        loadTables();
     }
 
     function loadTables() {
@@ -323,14 +305,6 @@
             option.textContent = tableName;
             tableSelect.appendChild(option);
         }
-    }
-
-    function loadTablesFromStorage() {
-        const storedTables = localStorage.getItem('tables');
-        if (storedTables) {
-            tables = JSON.parse(storedTables);
-        }
-        loadTables();
     }
 
     function selectTable() {
@@ -350,7 +324,7 @@
                     <td>${expense.date}</td>
                     <td>${expense.category}</td>
                     <td>${expense.description}</td>
-                    <td>${expense.amount}</td>
+                    <td>${expense.amount.toFixed(2)}</td>
                     <td>${expense.paymentMethod}</td>
                 `;
                 expenseList.appendChild(row);
@@ -493,7 +467,6 @@
     }
 
     window.onload = function() {
-        initializeDateSelectors();
         loadTablesFromStorage(); // Cargar tablas desde localStorage al iniciar
     }
 </script>
