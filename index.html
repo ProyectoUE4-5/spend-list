@@ -325,6 +325,14 @@
         }
     }
 
+    function loadTablesFromStorage() {
+        const storedTables = localStorage.getItem('tables');
+        if (storedTables) {
+            tables = JSON.parse(storedTables);
+        }
+        loadTables();
+    }
+
     function selectTable() {
         const selectedTable = document.getElementById('tableSelect').value;
         updateExpenseTable(selectedTable);
@@ -486,7 +494,7 @@
 
     window.onload = function() {
         initializeDateSelectors();
-        loadTables();
+        loadTablesFromStorage(); // Cargar tablas desde localStorage al iniciar
     }
 </script>
 
