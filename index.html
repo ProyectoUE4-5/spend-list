@@ -400,24 +400,24 @@
         document.getElementById('totalGeneral').textContent = formatCurrency(0);
     }
 
-    function updateTotals(expense) {
+function updateTotals(expense) {
         const totalFixed = parseFloat(document.getElementById('totalFixed').textContent.replace(/\./g, '').replace('$ ', '').replace(',', '.')) || 0;
         const totalVariable = parseFloat(document.getElementById('totalVariable').textContent.replace(/\./g, '').replace('$ ', '').replace(',', '.')) || 0;
         const totalPassive = parseFloat(document.getElementById('totalPassive').textContent.replace(/\./g, '').replace('$ ', '').replace(',', '.')) || 0;
-        
+
         let newTotalFixed = totalFixed;
         let newTotalVariable = totalVariable;
         let newTotalPassive = totalPassive;
 
         switch (expense.category) {
             case 'Fijo':
-                newTotalFixed += expense.amount;
+                newTotalFixed += expense.amount; // Acumula el monto
                 break;
             case 'Variable':
-                newTotalVariable += expense.amount;
+                newTotalVariable += expense.amount; // Acumula el monto
                 break;
             case 'Pasivo':
-                newTotalPassive += expense.amount;
+                newTotalPassive += expense.amount; // Acumula el monto
                 break;
         }
 
@@ -428,7 +428,7 @@
         const totalGeneral = newTotalFixed + newTotalVariable + newTotalPassive;
         document.getElementById('totalGeneral').textContent = formatCurrency(totalGeneral);
     }
-
+    
     function formatCurrency(amount) {
         return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(amount);
     }
