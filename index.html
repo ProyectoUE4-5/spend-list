@@ -32,6 +32,270 @@
             color: #333;
             margin-bottom: 10px;
         }
+        label {
+            margin-right: 10px;
+        }
+        input[type="text"], input[type="number"], input[type="date"], select {
+            width: calc(25% - 20px);
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .totals {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="expense-list">
+        <h1>Lista de Gastos</h1>
+        <table id="expenseTable">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Categoría</th>
+                    <th>Descripción</th>
+                    <th>Monto</th>
+                    <th>Método de Pago</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="expenseList"></tbody>
+        </table>
+        
+        <div class="totals">
+            <h2>Totales</h2>
+            <p>Total Fijos: <span id="totalFixed">0</span></p>
+            <p>Total Variables: <span id="totalVariable">0</span></p>
+            <p>Total Pasivos: <span id="totalPassive">0</span></p>
+            <p>Total General: <span id="totalGeneral">0</span></p>
+        </div>
+    </div>
+    <div class="controls">
+        <h2>Crear Nueva Tabla de Gastos</h2>
+        <input type="text" id="tableName" placeholder="Nombre de la Tabla">
+        <button onclick="createTable()">Crear Tabla</button>
+
+        <h2>Agregar Nuevo Gasto</h2>
+        <input type="date" id="expenseDate" required>
+        <select id="expenseCategory" required>
+            <option value="">Seleccione una categoría</option>
+            <option value="Fijo">Fijo</option>
+            <option value="Variable">Variable</option>
+            <option value="Discrecional">Discrecional</option>
+            <option value="Pasivo">Pasivo</option>
+        </select>
+        <input type="text" id="expenseAmount" placeholder="Monto" required oninput="formatAmount(this)">
+        <input type="text" id="expenseDescription" placeholder="Descripción">
+        <select id="paymentMethod" required>
+            <option value="">Seleccione un método de pago</option>
+            <option value="Mercado Pago">Mercado Pago</option>
+            <option value="Efectivo">Efectivo</option>
+        </select>
+        <button onclick="addExpense()">Agregar Gasto</button>
+    </div>
+</div>
+
+<script>
+    let tables = {};
+    let currentTable = '';
+
+    function loadTablesFromStorage() {
+        const storedTables = localStorage.getItem('tables');
+        if (storedTables) {
+            tables = JSON.parse(storedTables);
+        }
+        loadTables();
+    }
+
+    function loadTables() {
+        const tableSelect = document.getElementById('tableSelect');
+        tableSelect.innerHTML = '<option value="">Seleccione una tabla</option>';
+        for (const tableName in tables) {
+            const option = document.createElement('option');
+            option.value = tableName;
+            option.textContent = tableName;
+            tableSelect.appendChild(option);
+        }
+    }
+
+    function updateExpenseTable() {
+        const expenseList = document.getElementById('expenseList');
+        expenseList.innerHTML = '';
+        resetTotals();
+
+        if (currentTable && tables[currentTable]) {
+            tables[currentTable].forEach((expense, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${expense.date}</td>
+                    <td>${expense.category}</td>
+                    <td>${expense.description}</td>
+                    <td>${formatCurrency(expense.amount)}</td>
+                    <td>${expense.paymentMethod}</td>
+                    <td><button onclick="deleteExpense(${index})">Eliminar</button></td>
+                `;
+                expenseList.appendChild(row);
+                updateTotals(expense);
+            });
+        }
+    }
+
+    function createTable() {
+        const tableName = document.getElementById('tableName').value;
+        if (tableName && !tables[tableName]) {
+            tables[tableName] = [];
+            saveTables();
+            loadTables();
+            document.getElementById('tableName').value = '';
+            alert(`Tabla "${tableName}" creada.`);
+        } else {
+            alert('Por favor, introduce un nombre válido para la tabla.');
+        }
+    }
+
+    function addExpense() {
+        const expense = {
+            date: document.getElementById('expenseDate').value,
+            category: document.getElementById('expenseCategory').value,
+            description: document.getElementById('expenseDescription').value,
+            amount: parseFloat(document.getElementById('expenseAmount').value.replace(/\./g, '')),
+            paymentMethod: document.getElementById('paymentMethod').value
+        };
+        tables[currentTable].push(expense);
+        saveTables();
+        updateExpenseTable();
+        alert('Gasto agregado.');
+    }
+
+    function deleteExpense(index) {
+        if (confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
+            tables[currentTable].splice(index, 1);
+            saveTables();
+            updateExpenseTable();
+        }
+    }
+
+    function saveTables() {
+        localStorage.setItem('tables', JSON.stringify(tables));
+    }
+
+    function resetTotals() {
+        document.getElementById('totalFixed').textContent = formatCurrency(0);
+        document.getElementById('totalVariable').textContent = formatCurrency(0);
+        document.getElementById('totalPassive').textContent = formatCurrency(0);
+        document.getElementById('totalGeneral').textContent = formatCurrency(0);
+    }
+
+    function updateTotals(expense) {
+        const totalFixed = parseFloat(document.getElementById('totalFixed').textContent.replace(/\./g, '').replace(' pesos (ARS)', ''));
+        const totalVariable = parseFloat(document.getElementById('totalVariable').textContent.replace(/\./g, '').replace(' pesos (ARS)', ''));
+        const totalPassive = parseFloat(document.getElementById('totalPassive').textContent.replace(/\./g, '').replace(' pesos (ARS)', ''));
+
+        switch (expense.category) {
+            case 'Fijo':
+                document.getElementById('totalFixed').textContent = formatCurrency(totalFixed + expense.amount);
+                break;
+            case 'Variable':
+                document.getElementById('totalVariable').textContent = formatCurrency(totalVariable + expense.amount);
+                break;
+            case 'Pasivo':
+                document.getElementById('totalPassive').textContent = formatCurrency(totalPassive + expense.amount);
+                break;
+        }
+
+        const totalGeneral = totalFixed + totalVariable + totalPassive + expense.amount;
+        document.getElementById('totalGeneral').textContent = formatCurrency(totalGeneral);
+    }
+
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(amount);
+    }
+
+    function formatAmount(input) {
+        let value = input.value.replace(/\./g, ''); // Remover puntos
+        if (!isNaN(value)) {
+            const numLength = value.length;
+            if (numLength > 3) {
+                value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+            }
+            input.value = value;
+        }
+    }
+
+    window.onload = function() {
+        loadTablesFromStorage(); // Cargar tablas desde localStorage al iniciar
+    }
+</script>
+
+</body>
+</html>
+<!-- <!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Gastos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f5;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            height: 100%;
+            max-width: 1200px;
+            margin: 0;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: flex-start;
+        }
+        h1, h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
         .dark-mode h1, .dark-mode h2 {
             color: #f8f9fa;
         }
@@ -477,3 +741,4 @@
 
 </body>
 </html>
+ -->
